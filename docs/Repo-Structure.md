@@ -1,14 +1,4 @@
-/
-│── README.md
-│── 
-│── backend/
-│── frontend/
-│── connectors/
-
-
-
-
-/ai-admin-dashboard
+/AI-Powered-Adaptive-Admin-Dashboard
 │── README.md
 │── package.json
 │── backend/
