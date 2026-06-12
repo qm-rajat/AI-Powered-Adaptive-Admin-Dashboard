@@ -1,0 +1,480 @@
+
+<h2 class="sr-only">Advanced auto-detecting Excel dashboard with smart charts, filters, and column intelligence</h2>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+#upload-view{padding:2rem 0;}
+#dropzone{border:1.5px dashed var(--color-border-secondary);border-radius:16px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;}
+#dropzone.over{background:var(--color-background-secondary);border-color:var(--color-border-primary);}
+.upload-title{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-top:.75rem;}
+.upload-sub{font-size:13px;color:var(--color-text-secondary);margin-top:.3rem;}
+.fmt-pills{display:flex;gap:8px;justify-content:center;margin-top:1.25rem;flex-wrap:wrap;}
+.fmt-pill{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);}
+.type-legend{display:flex;gap:1.5rem;justify-content:center;margin-top:1.25rem;flex-wrap:wrap;}
+.tl-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-text-tertiary);}
+.tl-dot{width:8px;height:8px;border-radius:2px;}
+
+#dash-view{display:none;padding:.5rem 0;}
+
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:.5rem;flex-wrap:wrap;}
+.dash-file{display:flex;align-items:center;gap:8px;}
+.dash-filename{font-size:15px;font-weight:500;color:var(--color-text-primary);}
+.dash-meta{font-size:12px;color:var(--color-text-secondary);}
+.dash-actions{display:flex;gap:6px;align-items:center;}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;}
+.btn-sm:hover{background:var(--color-background-secondary);}
+.btn-primary{background:var(--color-background-info);color:var(--color-text-info);border-color:transparent;}
+.btn-primary:hover{opacity:.85;background:var(--color-background-info);}
+
+.col-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.cbadge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;display:flex;align-items:center;gap:4px;}
+.cb-num{background:#E6F1FB;color:#0C447C;}
+.cb-date{background:#E1F5EE;color:#085041;}
+.cb-text{background:#EEEDFE;color:#3C3489;}
+.cb-bool{background:#FAEEDA;color:#633806;}
+
+.filter-bar{display:flex;gap:8px;align-items:center;padding:.75rem 1rem;background:var(--color-background-secondary);border-radius:10px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.filter-bar label{font-size:12px;color:var(--color-text-secondary);font-weight:500;}
+.filter-bar select{font-size:12px;padding:4px 8px;border-radius:7px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);}
+.filter-bar input[type=text]{font-size:12px;padding:4px 8px;border-radius:7px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);width:120px;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem;}
+.kpi{background:var(--color-background-secondary);border-radius:10px;padding:.9rem 1rem;position:relative;overflow:hidden;}
+.kpi-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+.kpi-label{font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.kpi-value{font-size:22px;font-weight:500;color:var(--color-text-primary);line-height:1.1;}
+.kpi-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:3px;}
+
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0 .75rem;}
+.section-hdr span{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.07em;}
+.section-hdr .chart-count{font-size:11px;color:var(--color-text-tertiary);}
+
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;margin-bottom:1.25rem;}
+.ccard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem 1.1rem;}
+.ccard-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;}
+.ccard-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.ccard-sub{font-size:11px;color:var(--color-text-tertiary);margin-bottom:.65rem;}
+.ccard-type{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--color-background-secondary);color:var(--color-text-secondary);margin-top:1px;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary);}
+.legend-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.legend-dash{width:14px;height:0;border-top:2px dashed #888;flex-shrink:0;}
+.chart-wrap{position:relative;width:100%;}
+
+.sparkbar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sparkbar-label{font-size:12px;color:var(--color-text-primary);width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.sparkbar-track{flex:1;background:var(--color-background-secondary);border-radius:3px;height:8px;overflow:hidden;}
+.sparkbar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.sparkbar-val{font-size:11px;color:var(--color-text-secondary);width:48px;text-align:right;flex-shrink:0;}
+
+.tbl-section{margin-top:1rem;}
+.tbl-wrap{overflow-x:auto;border:0.5px solid var(--color-border-tertiary);border-radius:12px;}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+thead{background:var(--color-background-secondary);}
+th{text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;user-select:none;}
+th:hover{color:var(--color-text-primary);}
+td{padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--color-background-secondary);}
+.type-tag{font-size:9px;padding:1px 5px;border-radius:8px;vertical-align:middle;margin-left:3px;font-weight:500;}
+.sort-arrow{font-size:10px;margin-left:2px;color:var(--color-text-tertiary);}
+.tbl-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;flex-wrap:wrap;gap:.25rem;}
+.tbl-info{font-size:11px;color:var(--color-text-tertiary);}
+.tbl-pages{display:flex;gap:4px;}
+.page-btn{font-size:11px;padding:3px 8px;border-radius:6px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;}
+.page-btn.active{background:var(--color-background-info);color:var(--color-text-info);border-color:transparent;}
+.page-btn:hover:not(.active){background:var(--color-background-secondary);}
+
+.empty-state{text-align:center;padding:2rem;border:0.5px dashed var(--color-border-tertiary);border-radius:12px;color:var(--color-text-tertiary);font-size:13px;}
+</style>
+
+<div id="upload-view">
+  <div id="dropzone" onclick="document.getElementById('fi').click()"
+    ondragover="ev.preventDefault();document.getElementById('dropzone').classList.add('over')"
+    ondragleave="document.getElementById('dropzone').classList.remove('over')"
+    ondrop="handleDrop(event)">
+    <input type="file" id="fi" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadFile(this.files[0])">
+    <i class="ti ti-table-import" style="font-size:32px;color:var(--color-text-secondary);" aria-hidden="true"></i>
+    <p class="upload-title">Drop your file here to build a dashboard</p>
+    <p class="upload-sub">Columns are auto-detected and visualized intelligently</p>
+    <div class="fmt-pills">
+      <span class="fmt-pill"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> .xlsx</span>
+      <span class="fmt-pill"><i class="ti ti-file" aria-hidden="true"></i> .xls</span>
+      <span class="fmt-pill"><i class="ti ti-file-text" aria-hidden="true"></i> .csv</span>
+    </div>
+  </div>
+  <div class="type-legend">
+    <span class="tl-item"><span class="tl-dot" style="background:#378ADD;"></span>numeric → KPI + charts</span>
+    <span class="tl-item"><span class="tl-dot" style="background:#1D9E75;"></span>date → timeline</span>
+    <span class="tl-item"><span class="tl-dot" style="background:#7F77DD;"></span>text → categories</span>
+    <span class="tl-item"><span class="tl-dot" style="background:#BA7517;"></span>boolean → yes/no</span>
+  </div>
+</div>
+
+<div id="dash-view">
+  <div class="dash-header">
+    <div class="dash-file">
+      <i class="ti ti-file-spreadsheet" style="font-size:20px;color:var(--color-text-secondary);" aria-hidden="true"></i>
+      <div>
+        <div class="dash-filename" id="d-fname"></div>
+        <div class="dash-meta" id="d-meta"></div>
+      </div>
+    </div>
+    <div class="dash-actions">
+      <button class="btn-sm" onclick="sendPrompt('Analyze this data and give me insights')"><i class="ti ti-sparkles" aria-hidden="true" style="font-size:13px;"></i> Ask AI ↗</button>
+      <button class="btn-sm" onclick="resetDash()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:13px;"></i> New file</button>
+    </div>
+  </div>
+
+  <div class="col-badges" id="d-badges"></div>
+
+  <div class="filter-bar" id="filter-bar">
+    <i class="ti ti-filter" style="font-size:14px;color:var(--color-text-secondary);" aria-hidden="true"></i>
+    <label>Filter:</label>
+    <select id="f-col" onchange="updateFilterVals()"><option value="">-- column --</option></select>
+    <select id="f-val" onchange="applyFilters()"><option value="">-- all --</option></select>
+    <label style="margin-left:4px;">Search:</label>
+    <input type="text" id="f-search" placeholder="type to search…" oninput="applyFilters()">
+    <button class="btn-sm" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <div class="kpi-grid" id="d-kpis"></div>
+
+  <div class="section-hdr">
+    <span>Auto-detected charts</span>
+    <span class="chart-count" id="d-chart-count"></span>
+  </div>
+  <div class="chart-grid" id="d-charts"></div>
+
+  <div class="tbl-section">
+    <div class="section-hdr">
+      <span>Data table</span>
+      <span class="chart-count" id="d-sort-info"></span>
+    </div>
+    <div class="tbl-wrap"><div id="d-table"></div></div>
+    <div class="tbl-footer">
+      <span class="tbl-info" id="d-tbl-info"></span>
+      <div class="tbl-pages" id="d-pages"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const C = {
+  blue:'#378ADD', teal:'#1D9E75', coral:'#D85A30', purple:'#7F77DD',
+  amber:'#BA7517', pink:'#D4537E', green:'#639922', red:'#E24B4A', gray:'#888780'
+};
+const PAL = [C.blue,C.teal,C.coral,C.purple,C.amber,C.pink,C.green,C.red,C.gray];
+const ALPHAS = v => v+'33';
+
+let raw=[], filtered=[], colTypes={}, charts=[], sortCol=null, sortDir=1, page=0;
+const PER_PAGE = 15;
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if(f) loadFile(f);
+}
+
+function loadFile(file){
+  if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const r = new FileReader();
+  r.onload = e => {
+    let data;
+    if(ext==='csv'){
+      data = parseCSV(new TextDecoder().decode(e.target.result));
+    } else {
+      try {
+        const wb = XLSX.read(e.target.result,{type:'array',cellDates:true});
+        data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      } catch(err){ alert('Could not read file.'); return; }
+    }
+    if(!data||!data.length){ alert('Empty file.'); return; }
+    raw = data; filtered = data;
+    analyzeAndBuild(file.name);
+  };
+  r.readAsArrayBuffer(file);
+}
+
+function parseCSV(txt){
+  const lines = txt.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(l=>{
+    const v = l.split(',').map(x=>x.trim().replace(/^"|"$/g,''));
+    const row={};
+    headers.forEach((h,i)=>row[h]=v[i]||'');
+    return row;
+  });
+}
+
+function detectType(data, col){
+  const vals = data.map(r=>r[col]).filter(v=>v!==''&&v!=null);
+  if(!vals.length) return 'empty';
+  const bools = vals.filter(v=>v===true||v===false||String(v).toLowerCase()==='true'||String(v).toLowerCase()==='false'||v==='Yes'||v==='No');
+  if(bools.length/vals.length>0.8) return 'boolean';
+  const nums = vals.filter(v=>!isNaN(parseFloat(v))&&isFinite(v)&&v!==true&&v!==false);
+  if(nums.length/vals.length>0.8) return 'numeric';
+  const dates = vals.filter(v=>{
+    if(v instanceof Date) return true;
+    if(typeof v==='string') return !isNaN(Date.parse(v))&&(v.includes('-')||v.includes('/')||v.length===10);
+    return false;
+  });
+  if(dates.length/vals.length>0.6) return 'date';
+  return 'text';
+}
+
+function fmtN(v){
+  const n=parseFloat(v);
+  if(isNaN(n)) return String(v);
+  if(Math.abs(n)>=1e6) return (n/1e6).toFixed(1)+'M';
+  if(Math.abs(n)>=1e3) return (n/1e3).toFixed(1)+'K';
+  return Number.isInteger(n)?n.toLocaleString():n.toFixed(2);
+}
+
+function analyzeAndBuild(fname){
+  const keys = Object.keys(raw[0]);
+  colTypes = {};
+  keys.forEach(k=>{ colTypes[k]=detectType(raw,k); });
+
+  document.getElementById('upload-view').style.display='none';
+  document.getElementById('dash-view').style.display='block';
+  document.getElementById('d-fname').textContent = fname;
+  document.getElementById('d-meta').textContent = `${raw.length} rows · ${keys.length} columns`;
+
+  const numC=keys.filter(k=>colTypes[k]==='numeric');
+  const dateC=keys.filter(k=>colTypes[k]==='date');
+  const textC=keys.filter(k=>colTypes[k]==='text');
+  const boolC=keys.filter(k=>colTypes[k]==='boolean');
+
+  const badges=document.getElementById('d-badges');
+  badges.innerHTML='';
+  if(numC.length) badges.innerHTML+=`<span class="cbadge cb-num"><i class="ti ti-hash" style="font-size:11px;" aria-hidden="true"></i>${numC.length} numeric</span>`;
+  if(dateC.length) badges.innerHTML+=`<span class="cbadge cb-date"><i class="ti ti-calendar" style="font-size:11px;" aria-hidden="true"></i>${dateC.length} date</span>`;
+  if(textC.length) badges.innerHTML+=`<span class="cbadge cb-text"><i class="ti ti-text-size" style="font-size:11px;" aria-hidden="true"></i>${textC.length} text</span>`;
+  if(boolC.length) badges.innerHTML+=`<span class="cbadge cb-bool"><i class="ti ti-toggle-left" style="font-size:11px;" aria-hidden="true"></i>${boolC.length} boolean</span>`;
+
+  const fc=document.getElementById('f-col');
+  fc.innerHTML='<option value="">-- column --</option>'+textC.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  renderAll();
+}
+
+function renderAll(){
+  const keys = Object.keys(raw[0]);
+  const numC=keys.filter(k=>colTypes[k]==='numeric');
+  const dateC=keys.filter(k=>colTypes[k]==='date');
+  const textC=keys.filter(k=>colTypes[k]==='text');
+  const boolC=keys.filter(k=>colTypes[k]==='boolean');
+
+  renderKPIs(numC);
+  renderCharts(numC,dateC,textC,boolC);
+  renderTable(keys);
+}
+
+function renderKPIs(numC){
+  const el=document.getElementById('d-kpis');
+  el.innerHTML='';
+  const accents=[C.blue,C.teal,C.coral,C.purple,C.amber];
+  const items=[{label:'Total rows',val:filtered.length.toLocaleString(),sub:'records in view',acc:C.gray}];
+  numC.slice(0,4).forEach((k,i)=>{
+    const vals=filtered.map(r=>parseFloat(r[k])).filter(v=>!isNaN(v));
+    const sum=vals.reduce((a,b)=>a+b,0);
+    const avg=vals.length?sum/vals.length:0;
+    const mn=vals.length?Math.min(...vals):0;
+    const mx=vals.length?Math.max(...vals):0;
+    items.push({label:k,val:fmtN(sum),sub:`avg ${fmtN(avg)} · max ${fmtN(mx)}`,acc:accents[i]});
+  });
+  items.forEach(m=>{
+    el.innerHTML+=`<div class="kpi"><div class="kpi-accent" style="background:${m.acc};"></div><div class="kpi-label">${m.label}</div><div class="kpi-value">${m.val}</div><div class="kpi-sub">${m.sub}</div></div>`;
+  });
+}
+
+function renderCharts(numC,dateC,textC,boolC){
+  charts.forEach(c=>c.destroy()); charts=[];
+  const el=document.getElementById('d-charts');
+  el.innerHTML='';
+  let count=0;
+
+  if(dateC.length&&numC.length){
+    const dc=dateC[0],nc=numC[0];
+    const grp={};
+    filtered.forEach(r=>{
+      let d=r[dc];
+      if(d instanceof Date)d=d.toISOString().slice(0,7);
+      else if(typeof d==='string')d=d.slice(0,7);
+      grp[d]=(grp[d]||0)+parseFloat(r[nc]||0);
+    });
+    const sorted=Object.entries(grp).sort((a,b)=>a[0].localeCompare(b[0]));
+    const legHtml=`<div class="legend"><span class="legend-item"><span class="legend-sq" style="background:${C.blue};"></span>${nc} over time</span></div>`;
+    el.innerHTML+=`<div class="ccard"><div class="ccard-hdr"><div><div class="ccard-title">${nc} over time</div><div class="ccard-sub">${dc} (monthly)</div></div><span class="ccard-type">line</span></div>${legHtml}<div class="chart-wrap" style="height:200px"><canvas id="ch0" role="img" aria-label="Line chart of ${nc} over ${dc}">${nc} over time.</canvas></div></div>`;
+    count++;
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById('ch0');
+      if(ctx) charts.push(new Chart(ctx,{type:'line',data:{labels:sorted.map(e=>e[0]),datasets:[{label:nc,data:sorted.map(e=>Math.round(e[1]*100)/100),borderColor:C.blue,backgroundColor:C.blue+'18',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:C.blue}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(128,128,128,.06)'},ticks:{font:{size:10},maxTicksLimit:10}},y:{grid:{color:'rgba(128,128,128,.06)'},ticks:{font:{size:10}}}}}}));
+    });
+  }
+
+  if(textC.length&&numC.length){
+    const tc=textC[0],nc=numC[0];
+    const agg={};
+    filtered.forEach(r=>{const k=String(r[tc]||'—').slice(0,26);agg[k]=(agg[k]||0)+parseFloat(r[nc]||0);});
+    const entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const max=entries[0]?entries[0][1]:1;
+    let sparkHtml='';
+    entries.forEach((e,i)=>{
+      const pct=Math.round(e[1]/max*100);
+      sparkHtml+=`<div class="sparkbar-row"><div class="sparkbar-label" title="${e[0]}">${e[0]}</div><div class="sparkbar-track"><div class="sparkbar-fill" style="width:${pct}%;background:${PAL[i%PAL.length]};"></div></div><div class="sparkbar-val">${fmtN(e[1])}</div></div>`;
+    });
+    el.innerHTML+=`<div class="ccard"><div class="ccard-hdr"><div><div class="ccard-title">${nc} by ${tc}</div><div class="ccard-sub">top ${entries.length} categories</div></div><span class="ccard-type">bar</span></div>${sparkHtml}</div>`;
+    count++;
+  }
+
+  if(numC.length>=2){
+    const [n1,n2]=numC;
+    const lblC=textC[0]||null;
+    const top=filtered.slice(0,20);
+    const labels=lblC?top.map(r=>String(r[lblC]).slice(0,14)):top.map((_,i)=>i+1);
+    const legHtml=`<div class="legend"><span class="legend-item"><span class="legend-sq" style="background:${C.blue};"></span>${n1}</span><span class="legend-item"><span class="legend-dash"></span>${n2}</span></div>`;
+    el.innerHTML+=`<div class="ccard"><div class="ccard-hdr"><div><div class="ccard-title">${n1} vs ${n2}</div><div class="ccard-sub">dual metric comparison</div></div><span class="ccard-type">line</span></div>${legHtml}<div class="chart-wrap" style="height:200px"><canvas id="ch2" role="img" aria-label="Comparison of ${n1} and ${n2}">Dual metric chart.</canvas></div></div>`;
+    count++;
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById('ch2');
+      if(ctx) charts.push(new Chart(ctx,{type:'line',data:{labels,datasets:[{label:n1,data:top.map(r=>parseFloat(r[n1])||0),borderColor:C.blue,backgroundColor:'transparent',tension:.3,pointRadius:2,borderDash:[]},{label:n2,data:top.map(r=>parseFloat(r[n2])||0),borderColor:C.teal,backgroundColor:'transparent',tension:.3,pointRadius:2,borderDash:[4,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(128,128,128,.06)'},ticks:{font:{size:10},maxRotation:35,maxTicksLimit:10}},y:{grid:{color:'rgba(128,128,128,.06)'},ticks:{font:{size:10}}}}}}));
+    });
+  }
+
+  if(boolC.length){
+    const bc=boolC[0];
+    let t=0,f=0;
+    filtered.forEach(r=>{const v=r[bc];(v===true||String(v).toLowerCase()==='true'||v==='Yes')?t++:f++;});
+    const legHtml=`<div class="legend"><span class="legend-item"><span class="legend-sq" style="background:${C.teal};"></span>Yes (${t})</span><span class="legend-item"><span class="legend-sq" style="background:${C.gray};"></span>No (${f})</span></div>`;
+    el.innerHTML+=`<div class="ccard"><div class="ccard-hdr"><div><div class="ccard-title">${bc}</div><div class="ccard-sub">boolean distribution</div></div><span class="ccard-type">donut</span></div>${legHtml}<div class="chart-wrap" style="height:180px"><canvas id="ch3" role="img" aria-label="Boolean distribution for ${bc}">${bc}: ${t} yes, ${f} no.</canvas></div></div>`;
+    count++;
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById('ch3');
+      if(ctx) charts.push(new Chart(ctx,{type:'doughnut',data:{labels:['Yes','No'],datasets:[{data:[t,f],backgroundColor:[C.teal+'cc',C.gray+'66'],borderWidth:2,borderColor:'rgba(128,128,128,.1)'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>` ${i.label}: ${i.raw} (${Math.round(i.raw/(t+f)*100)}%)`}}}}}));
+    });
+  }
+
+  if(textC.length>=2&&numC.length){
+    const tc=textC[0],nc=numC[0];
+    const agg={};
+    filtered.forEach(r=>{const k=String(r[tc]||'—').slice(0,20);agg[k]=(agg[k]||0)+parseFloat(r[nc]||0);});
+    const entries=Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const legHtml=`<div class="legend">${entries.map((e,i)=>`<span class="legend-item"><span class="legend-sq" style="background:${PAL[i]};"></span>${e[0].slice(0,12)} (${fmtN(e[1])})</span>`).join('')}</div>`;
+    el.innerHTML+=`<div class="ccard"><div class="ccard-hdr"><div><div class="ccard-title">${nc} share by ${tc}</div><div class="ccard-sub">proportional breakdown</div></div><span class="ccard-type">pie</span></div>${legHtml}<div class="chart-wrap" style="height:200px"><canvas id="ch4" role="img" aria-label="Pie chart of ${nc} by ${tc}">${nc} breakdown.</canvas></div></div>`;
+    count++;
+    requestAnimationFrame(()=>{
+      const ctx=document.getElementById('ch4');
+      if(ctx) charts.push(new Chart(ctx,{type:'pie',data:{labels:entries.map(e=>e[0]),datasets:[{data:entries.map(e=>Math.round(e[1]*100)/100),backgroundColor:PAL.slice(0,entries.length).map(c=>c+'cc'),borderWidth:2,borderColor:'rgba(128,128,128,.1)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
+    });
+  }
+
+  document.getElementById('d-chart-count').textContent=`${count} chart${count!==1?'s':''} generated`;
+  if(!count) el.innerHTML='<div class="empty-state"><i class="ti ti-chart-off" style="font-size:24px;display:block;margin-bottom:.5rem;" aria-hidden="true"></i>Not enough column variety. Try a file with numeric + text or date columns.</div>';
+}
+
+function renderTable(keys){
+  const show=keys.slice(0,10);
+  let data=[...filtered];
+  if(sortCol){
+    data.sort((a,b)=>{
+      const av=a[sortCol],bv=b[sortCol];
+      const an=parseFloat(av),bn=parseFloat(bv);
+      if(!isNaN(an)&&!isNaN(bn)) return (an-bn)*sortDir;
+      return String(av).localeCompare(String(bv))*sortDir;
+    });
+  }
+  const total=data.length, pages=Math.ceil(total/PER_PAGE);
+  const slice=data.slice(page*PER_PAGE,(page+1)*PER_PAGE);
+  const typeMap={numeric:'cb-num',date:'cb-date',text:'cb-text',boolean:'cb-bool'};
+  const tclr={numeric:'#0C447C',date:'#085041',text:'#3C3489',boolean:'#633806'};
+  const tbg={numeric:'#E6F1FB',date:'#E1F5EE',text:'#EEEDFE',boolean:'#FAEEDA'};
+  let html=`<table><thead><tr>`;
+  show.forEach(k=>{
+    const t=colTypes[k]||'';
+    const arrow=sortCol===k?(sortDir===1?' ↑':' ↓'):'';
+    html+=`<th onclick="sortBy('${k}')" style="width:${Math.max(80,Math.floor(600/show.length))}px">${k}<span class="type-tag" style="background:${tbg[t]||'#eee'};color:${tclr[t]||'#555'}">${t}</span><span class="sort-arrow">${arrow}</span></th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  slice.forEach(r=>{
+    html+='<tr>';
+    show.forEach(k=>{
+      let v=r[k];
+      if(v instanceof Date) v=v.toISOString().slice(0,10);
+      html+=`<td title="${String(v)}">${String(v===''||v==null?'—':v).slice(0,40)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('d-table').innerHTML=html;
+  document.getElementById('d-tbl-info').textContent=`Showing ${page*PER_PAGE+1}–${Math.min((page+1)*PER_PAGE,total)} of ${total} rows${keys.length>10?' · first 10 cols':''}`;
+  document.getElementById('d-sort-info').textContent=sortCol?`sorted by ${sortCol} ${sortDir===1?'↑':'↓'}`:'click column to sort';
+  const pg=document.getElementById('d-pages');
+  pg.innerHTML='';
+  for(let i=0;i<Math.min(pages,8);i++){
+    pg.innerHTML+=`<button class="page-btn${i===page?' active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  }
+  if(pages>8) pg.innerHTML+=`<span class="tbl-info"> +${pages-8} more</span>`;
+}
+
+function sortBy(col){
+  if(sortCol===col) sortDir*=-1;
+  else{sortCol=col;sortDir=1;}
+  renderTable(Object.keys(raw[0]));
+}
+function goPage(p){page=p;renderTable(Object.keys(raw[0]));}
+
+function updateFilterVals(){
+  const col=document.getElementById('f-col').value;
+  const fv=document.getElementById('f-val');
+  if(!col){fv.innerHTML='<option value="">-- all --</option>';applyFilters();return;}
+  const uniq=[...new Set(raw.map(r=>String(r[col])))].sort();
+  fv.innerHTML='<option value="">-- all --</option>'+uniq.map(v=>`<option value="${v}">${v.slice(0,40)}</option>`).join('');
+  applyFilters();
+}
+
+function applyFilters(){
+  const col=document.getElementById('f-col').value;
+  const val=document.getElementById('f-val').value;
+  const search=document.getElementById('f-search').value.toLowerCase().trim();
+  filtered=raw.filter(r=>{
+    if(col&&val&&String(r[col])!==val) return false;
+    if(search){
+      return Object.values(r).some(v=>String(v).toLowerCase().includes(search));
+    }
+    return true;
+  });
+  page=0;
+  const keys=Object.keys(raw[0]);
+  const numC=keys.filter(k=>colTypes[k]==='numeric');
+  const dateC=keys.filter(k=>colTypes[k]==='date');
+  const textC=keys.filter(k=>colTypes[k]==='text');
+  const boolC=keys.filter(k=>colTypes[k]==='boolean');
+  renderKPIs(numC);
+  renderCharts(numC,dateC,textC,boolC);
+  renderTable(keys);
+  document.getElementById('d-meta').textContent=`${filtered.length} of ${raw.length} rows · ${keys.length} columns`;
+}
+
+function clearFilters(){
+  document.getElementById('f-col').value='';
+  document.getElementById('f-val').innerHTML='<option value="">-- all --</option>';
+  document.getElementById('f-search').value='';
+  filtered=raw; page=0; sortCol=null; sortDir=1;
+  renderAll();
+  document.getElementById('d-meta').textContent=`${raw.length} rows · ${Object.keys(raw[0]).length} columns`;
+}
+
+function resetDash(){
+  charts.forEach(c=>c.destroy()); charts=[]; raw=[]; filtered=[]; colTypes={};
+  sortCol=null; sortDir=1; page=0;
+  document.getElementById('dash-view').style.display='none';
+  document.getElementById('upload-view').style.display='block';
+  document.getElementById('fi').value='';
+}
+</script>
